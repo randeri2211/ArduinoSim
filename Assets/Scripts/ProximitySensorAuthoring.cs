@@ -27,6 +27,7 @@ public class ProximitySensorAuthoring : MonoBehaviour
                 {
                     Digital = true,
                     MC = authoring.MC,
+                    Name = authoring.name,
                 },
             });
 

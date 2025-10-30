@@ -66,5 +66,12 @@
     "explorer.fileNesting.patterns": {
         "*.sln": "*.csproj"
     },
-    "dotnet.defaultSolution": "My project.slnx"
+    "dotnet.defaultSolution": "My project.slnx",
+    "csharp.suppressDotnetRestoreNotification": true,
+    "omnisharp.useModernNet": true,
+    "omnisharp.enableImportCompletion": true,
+    "omnisharp.enableRoslynAnalyzers": true,
+    "omnisharp.sdkIncludePrereleases": true,
+    "omnisharp.organizeImportsOnFormat": true,
+    "omnisharp.preferOmnisharp": true
 }
