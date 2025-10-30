@@ -38,7 +38,6 @@ public class CameraMovement : MonoBehaviour
 
     void Update()
     {
-        Debug.Log("x:"+ rotationX + "y:"+ rotationY);
         HandleMovement();
         if (enableMouseLook)
             HandleMouseLook();
