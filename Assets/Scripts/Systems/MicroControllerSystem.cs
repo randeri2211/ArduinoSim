@@ -26,7 +26,7 @@ public partial struct MicroControllerSystem : ISystem
             int count = 0;
             foreach (var dPin in digitalPins)
             {
-                Debug.Log("Pin #"+count+" Input:" + dPin.INPUT + "\nValue:" + dPin.HIGH + "\n");
+                // Debug.Log("Pin #"+count+" Input:" + dPin.INPUT + "\nValue:" + dPin.HIGH + "\n");
                 count++;
             }
 

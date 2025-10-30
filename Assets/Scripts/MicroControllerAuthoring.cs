@@ -34,7 +34,7 @@ public class MicroControllerAuthoring : MonoBehaviour
                     Value = 0
                 });
             }
-            //TODO:The same for DigitalPin
+
             var bufD = AddBuffer<DigitalPin>(entity);
             bufD.Capacity = math.max(0, authoring.DigitalPins);
             for (int i = 0; i < bufD.Capacity; i++)
