@@ -5,17 +5,13 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using Unity.Physics; 
 using UnityEngine;
-<<<<<<< HEAD
 using Microsoft.VisualBasic;
-=======
->>>>>>> f11b842e933bf12a28e6c86effca303a74d01c8c
 
 public partial struct ProximitySensorSystem : ISystem
 {
     const int Rings = 5;         // excludes center; total rings = Rings (θ > 0) + center (θ = 0)
     const int BaseAzimuth = 6;   // rays in ring k ~ BaseAzimuth * k
 
-<<<<<<< HEAD
     [BurstCompile]
     public void OnCreate(ref SystemState state)
     {
@@ -24,17 +20,6 @@ public partial struct ProximitySensorSystem : ISystem
     }
 
     [BurstCompile]
-=======
-    // [BurstCompile]
-    public void OnCreate(ref SystemState state)
-    {
-        // Only run if we actually have sensors in the world
-        state.RequireForUpdate<SensorTag>();
-        state.RequireForUpdate<ProximitySensor>();
-    }
-
-    // [BurstCompile]
->>>>>>> f11b842e933bf12a28e6c86effca303a74d01c8c
     public void OnUpdate(ref SystemState state)
     {
         var physics = SystemAPI.GetSingleton<PhysicsWorldSingleton>();
@@ -111,7 +96,6 @@ public partial struct ProximitySensorSystem : ISystem
 
             // Write the single closest result to the component
             closest.ValueRW.Distance = bestDist;            // -1 if none
-<<<<<<< HEAD
             closest.ValueRW.Direction = bestDist > 0 ? bestDir : float3.zero; // Save direction for debug purposes
             if (sensor.ValueRO.sensor.MC != Entity.Null)
             {
@@ -132,13 +116,5 @@ public partial struct ProximitySensorSystem : ISystem
     }
     
     [BurstCompile]
-=======
-            closest.ValueRW.Direction = bestDist > 0 ? bestDir : float3.zero;
-            Debug.Log(closest.ValueRW.Distance);
-        }
-    }
-    
-    // [BurstCompile]
->>>>>>> f11b842e933bf12a28e6c86effca303a74d01c8c
     public void OnDestroy(ref SystemState state) { }
 }
