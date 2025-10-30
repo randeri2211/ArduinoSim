@@ -119,12 +119,82 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+<<<<<<< HEAD
 --- !u!65 &915191854
+=======
+--- !u!1001 &1118803301
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 4cee5d8483da6f04a824ffedbb35e044, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 30.78945
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4cee5d8483da6f04a824ffedbb35e044, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4cee5d8483da6f04a824ffedbb35e044, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -8.39187
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4cee5d8483da6f04a824ffedbb35e044, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4cee5d8483da6f04a824ffedbb35e044, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4cee5d8483da6f04a824ffedbb35e044, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4cee5d8483da6f04a824ffedbb35e044, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4cee5d8483da6f04a824ffedbb35e044, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4cee5d8483da6f04a824ffedbb35e044, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4cee5d8483da6f04a824ffedbb35e044, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 4cee5d8483da6f04a824ffedbb35e044, type: 3}
+      propertyPath: m_Name
+      value: HC-SR04 Sensor
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8164078558771037576, guid: 4cee5d8483da6f04a824ffedbb35e044, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1118803303}
+  m_SourcePrefab: {fileID: 100100000, guid: 4cee5d8483da6f04a824ffedbb35e044, type: 3}
+--- !u!1 &1118803302 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8164078558771037576, guid: 4cee5d8483da6f04a824ffedbb35e044, type: 3}
+  m_PrefabInstance: {fileID: 1118803301}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &1118803303
+>>>>>>> f11b842e933bf12a28e6c86effca303a74d01c8c
 BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
+<<<<<<< HEAD
   m_GameObject: {fileID: 8164078558230334754}
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -166,6 +236,9 @@ MeshCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1430198407}
+=======
+  m_GameObject: {fileID: 1118803302}
+>>>>>>> f11b842e933bf12a28e6c86effca303a74d01c8c
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
@@ -177,6 +250,7 @@ MeshCollider:
   m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
+<<<<<<< HEAD
   serializedVersion: 5
   m_Convex: 0
   m_CookingOptions: 30
@@ -487,10 +561,19 @@ MonoBehaviour:
   MaxRange: 4
   WorkingVoltage: 5
   MeasureAngle: 15
+=======
+  serializedVersion: 3
+  m_Size: {x: 0.45, y: 0.26, z: 0.1846}
+  m_Center: {x: 0, y: -0.030000001, z: 0.028700002}
+>>>>>>> f11b842e933bf12a28e6c86effca303a74d01c8c
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
+<<<<<<< HEAD
   - {fileID: 1151388029088030233}
   - {fileID: 918100973709814338}
   - {fileID: 1430198411}
+=======
+  - {fileID: 1118803301}
+>>>>>>> f11b842e933bf12a28e6c86effca303a74d01c8c
