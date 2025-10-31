@@ -130,6 +130,7 @@ GameObject:
   - component: {fileID: 145555601}
   - component: {fileID: 145555600}
   - component: {fileID: 145555602}
+  - component: {fileID: 145555603}
   m_Layer: 5
   m_Name: UIDocument
   m_TagString: Untagged
@@ -188,6 +189,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SceneLayoutSelector
   boxPref: {fileID: 4513140936347541080, guid: f7f763353e22730438a9e07518c05915, type: 3}
+--- !u!114 &145555603
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 145555599}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85f66434e87ab064896ab08e8d470706, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CodeUI
+  toggleKey: 282
+  runKey: 283
+  overlayUxml: {fileID: 9197481963319205126, guid: 40068ed949e3eab45a0cdc0ec3026ce9, type: 3}
 --- !u!1 &1312062702
 GameObject:
   m_ObjectHideFlags: 0
