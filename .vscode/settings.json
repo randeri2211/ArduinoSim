@@ -69,9 +69,9 @@
     "dotnet.defaultSolution": "My project.slnx",
     "csharp.suppressDotnetRestoreNotification": true,
     "omnisharp.useModernNet": true,
-    "omnisharp.enableImportCompletion": true,
     "omnisharp.enableRoslynAnalyzers": true,
     "omnisharp.sdkIncludePrereleases": true,
-    "omnisharp.organizeImportsOnFormat": true,
-    "omnisharp.preferOmnisharp": true
+    "omnisharp.preferOmnisharp": true,
+    "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true,
+    "dotnet.formatting.organizeImportsOnFormat": true
 }

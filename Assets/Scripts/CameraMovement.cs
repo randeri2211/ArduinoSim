@@ -38,10 +38,27 @@ public class CameraMovement : MonoBehaviour
 
     void Update()
     {
-        HandleMovement();
-        if (enableMouseLook)
-            HandleMouseLook();
+        CheckMove();
+        if(!Cursor.visible){
+            HandleMovement();
+            if (enableMouseLook)
+                HandleMouseLook();
+        }
         HandleClick();
+    }
+
+    void CheckMove()
+    {
+        if (Cursor.visible)
+        {
+            Cursor.lockState = CursorLockMode.None;
+            enableMouseLook = false;
+        }
+        else
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            enableMouseLook = true;
+        }
     }
 
     void HandleMovement()
@@ -89,7 +106,7 @@ public class CameraMovement : MonoBehaviour
 
     void HandleClick()
     {
-        if (Mouse.current.leftButton.wasPressedThisFrame)
+        if (Mouse.current.leftButton.wasPressedThisFrame && !Cursor.visible)
         {
             // Ray from the center of this camera’s viewport
             Ray ray = cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
@@ -106,8 +123,8 @@ public class CameraMovement : MonoBehaviour
 
         if (Mouse.current.rightButton.wasPressedThisFrame)
         {
-            enableMouseLook = !enableMouseLook;
-            Cursor.lockState = Cursor.lockState == CursorLockMode.Locked ? CursorLockMode.None : CursorLockMode.Locked;
+            // enableMouseLook = !enableMouseLook;
+            // Cursor.lockState = Cursor.lockState == CursorLockMode.Locked ? CursorLockMode.None : CursorLockMode.Locked;
             Cursor.visible = !Cursor.visible;
         }
     }

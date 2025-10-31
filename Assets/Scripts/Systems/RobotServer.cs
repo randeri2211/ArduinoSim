@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.IO;
 using System.Threading;
 using UnityEngine;
 using Unity.Burst;
@@ -61,21 +62,33 @@ public static class RobotServerRuntime
 
                 while (_running && client.Connected)
                 {
-                    int n = stream.Read(buf, 0, buf.Length);
-                    if (n <= 0) break;
+                    int n = 0;
+                    try
+                    {
+                        n = stream.Read(buf, 0, buf.Length); // blocks
+                        if (n <= 0) break; // graceful close (FIN)
+                    }
+                    catch (IOException)
+                    {
+                        // Expected when client closes abruptly (RST). Treat as normal.
+                        break;
+                    }
+                    catch (SocketException)
+                    {
+                        // Network hiccup/abort — also treat as disconnect.
+                        break;
+                    }
 
                     sb.Append(Encoding.UTF8.GetString(buf, 0, n));
 
-                    int idx;
-                    while ((idx = sb.ToString().IndexOf('\n')) >= 0)
+                    int newline;
+                    // parse complete lines
+                    while ((newline = sb.ToString().IndexOf('\n')) >= 0)
                     {
-                        string line = sb.ToString(0, idx).Trim();
-                        sb.Remove(0, idx + 1);
+                        string line = sb.ToString(0, newline).Trim();
+                        sb.Remove(0, newline + 1);
                         if (line.Length > 0)
-                        {
                             Commands.Enqueue(line);
-                            Debug.Log($"[RobotServer] recv: {line}");
-                        }
                     }
                 }
 

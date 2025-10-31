@@ -1,0 +1,15 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+  <ui:VisualElement style="flex-grow:1; padding:10px;">
+    <ui:TextField name="CodeUI"
+                  multiline="true"
+                  style="flex-grow:1; height: 100%;
+                         white-space: normal;
+                         overflow: auto;
+                         padding:8px;
+                         border-top-left-radius:6px;
+                         border-top-right-radius:6px;
+                         border-bottom-left-radius:6px;
+                         border-bottom-right-radius:6px;
+                         background-color: rgba(0,0,0,0.06);" />
+  </ui:VisualElement>
+</ui:UXML>

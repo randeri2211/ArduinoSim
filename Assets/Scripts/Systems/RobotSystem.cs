@@ -38,7 +38,6 @@ public partial struct RobotServerSystem : ISystem
                         }
                     case "SensorData":
                         {
-                            Debug.Log("sensordata");
                             bool found = false;
                             foreach (var (psensor, hit) in
                             SystemAPI.Query<RefRO<ProximitySensor>, RefRO<ProximityHit>>())
