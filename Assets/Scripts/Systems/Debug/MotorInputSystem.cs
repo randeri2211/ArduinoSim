@@ -24,9 +24,9 @@ public partial struct MotorInputSystem : ISystem
             t -= tStep;
         }
         // Debug.Log("t " + t);
-        foreach (var motor in SystemAPI.Query<RefRW<Motor>>())
-        {
-            motor.ValueRW.Throttle = math.clamp(t, -1f, 1f);
-        }
+        // foreach (var motor in SystemAPI.Query<RefRW<Motor>>())
+        // {
+        //     motor.ValueRW.Throttle = math.clamp(t, -1f, 1f);
+        // }
     }
 }

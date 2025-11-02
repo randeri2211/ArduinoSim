@@ -5,6 +5,8 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
+using Unity.Collections;
+
 
 public partial struct RobotServerSystem : ISystem
 {
@@ -31,8 +33,23 @@ public partial struct RobotServerSystem : ISystem
 
                 switch (cmd.type)
                 {
-                    case "Move":
+                    case "MotorData":
                         {
+                            foreach (var (motor, name) in
+                            SystemAPI.Query<RefRW<Motor>, RefRO<Name>>())
+                            {
+                                string[] data = cmd.data.Split(",");
+                                Debug.Log(name.ValueRO.Value);
+
+                                if (name.ValueRO.Value == data[0])
+                                {
+                                    float throttle;
+                                    var success = float.TryParse(data[1],out throttle);
+                                    motor.ValueRW.Throttle = throttle;
+                                    RobotServerRuntime.Send($"{success}");
+                                    break;
+                                }
+                            }
                             Debug.Log("Moving");
                             break;
                         }
@@ -44,7 +61,8 @@ public partial struct RobotServerSystem : ISystem
                             {
                                 if (psensor.ValueRO.sensor.Name == cmd.data)
                                 {
-                                    RobotServerRuntime.Send($"{hit.ValueRO.Distance}");
+                                    var distance = hit.ValueRO.Distance;
+                                    RobotServerRuntime.Send($"{distance}");
                                     found = true;
                                     break;
                                 }

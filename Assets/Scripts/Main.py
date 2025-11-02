@@ -1,5 +1,5 @@
 
-from UnityToPythonBridge.SensorData import *
+from UnityToPythonBridge.Utils import *
 
 if __name__ == '__main__':
     # Connect To Unity System Socket
@@ -23,3 +23,4 @@ if __name__ == '__main__':
 
 for i in range(10):
     print(SensorData("Proximity_Sensor"))
+    print(DriveMotor("Motor", "0.05"))
