@@ -8,9 +8,6 @@ public class ProximitySensorAuthoring : MonoBehaviour
     public float MaxRange = 4f;
     public float WorkingVoltage = 5f;
     public int MeasureAngle = 15;
-    public const bool Digital = true;
-    public Entity MC;
-
     class Baker : Baker<ProximitySensorAuthoring>
     {
         public override void Bake(ProximitySensorAuthoring authoring)
@@ -25,9 +22,7 @@ public class ProximitySensorAuthoring : MonoBehaviour
                 MeasureAngle = authoring.MeasureAngle,
                 sensor = new Sensor
                 {
-                    Digital = true,
-                    MC = authoring.MC,
-                    Name = authoring.name,
+                Name = authoring.name,
                 },
             });
 

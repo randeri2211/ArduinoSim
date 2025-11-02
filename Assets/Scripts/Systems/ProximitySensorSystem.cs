@@ -97,21 +97,6 @@ public partial struct ProximitySensorSystem : ISystem
             // Write the single closest result to the component
             closest.ValueRW.Distance = bestDist;            // -1 if none
             closest.ValueRW.Direction = bestDist > 0 ? bestDir : float3.zero; // Save direction for debug purposes
-            if (sensor.ValueRO.sensor.MC != Entity.Null)
-            {
-                var digitals = SystemAPI.GetBuffer<DigitalPin>(sensor.ValueRO.sensor.MC);
-                var pin = digitals[sensor.ValueRO.sensor.Pin];
-                if (bestDist != -1f)
-                {
-                    pin.HIGH = true;
-                }
-                else
-                {
-                    pin.HIGH = false;
-                }
-                
-                digitals[sensor.ValueRO.sensor.Pin] = pin;
-            }
         }
     }
     

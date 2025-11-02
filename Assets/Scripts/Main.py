@@ -12,12 +12,6 @@ if __name__ == '__main__':
                 exec(code)
             except Exception as e:
                 print(f"failed at code execution due to {e}")
-            # for line in code:
-            #     print(line)
-            #     try:
-            #         eval(line)
-            #     except Exception as e:
-            #         print(f"failed at code execution {line} due to {e}")
 
         except socket.timeout:
             print("timeout")
@@ -28,4 +22,4 @@ if __name__ == '__main__':
 
 
 for i in range(10):
-    print(SensorData("HC-SR04 Sensor"))
+    print(SensorData("Proximity_Sensor"))
