@@ -6,14 +6,16 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
 using Unity.Collections;
-
+using Unity.Physics;
 
 public partial struct RobotServerSystem : ISystem
 {
+    private ComponentLookup<Name> _nameLookup;
     public void OnCreate(ref SystemState state)
     {
         // Start server once when the world is created
         RobotServerRuntime.Start(7001);
+        _nameLookup = state.GetComponentLookup<Name>(true);
     }
 
     public void OnDestroy(ref SystemState state)
@@ -23,6 +25,7 @@ public partial struct RobotServerSystem : ISystem
 
     public void OnUpdate(ref SystemState state)
     {
+        _nameLookup.Update(ref state);
         // Consume pending messages
         while (RobotServerRuntime.Commands.TryDequeue(out var msg))
         {
@@ -35,20 +38,26 @@ public partial struct RobotServerSystem : ISystem
                 {
                     case "MotorData":
                         {
-                            foreach (var (motor, name) in
-                            SystemAPI.Query<RefRW<Motor>, RefRO<Name>>())
+                            foreach (var (joint, parent) in
+                            SystemAPI.Query<RefRW<PhysicsJoint>, RefRO<Parent>>())
                             {
-                                string[] data = cmd.data.Split(",");
-                                Debug.Log(name.ValueRO.Value);
-
-                                if (name.ValueRO.Value == data[0])
+                                if (joint.ValueRW.JointType == JointType.AngularVelocityMotor)
                                 {
-                                    float throttle;
-                                    var success = float.TryParse(data[1],out throttle);
-                                    motor.ValueRW.Throttle = throttle;
-                                    RobotServerRuntime.Send($"{success}");
-                                    break;
+                                    FixedString64Bytes pName;
+                                    pName = _nameLookup[parent.ValueRO.Value].Value;
+                                    string[] data = cmd.data.Split(",");
+                                    if (pName == data[0])
+                                    {
+                                        float velocity;
+                                        var success = float.TryParse(data[1], out velocity);
+                                        var constraints = joint.ValueRW.GetConstraints();
+                                        constraints.ElementAt(0).Target.x = velocity;
+                                        joint.ValueRW.SetConstraints(constraints);
+                                        RobotServerRuntime.Send($"{success}");
+                                        break;
+                                    }
                                 }
+
                             }
                             Debug.Log("Moving");
                             break;

@@ -28,11 +28,6 @@ public class CodeUI : MonoBehaviour
             {
                 CodeField.multiline = true;
                 CodeField.isDelayed = false;
-                CodeField.RegisterValueChangedCallback(evt =>
-                {
-                    // handle text change
-                    Debug.Log(evt.newValue);
-                });
             }
         }
         else

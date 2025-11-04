@@ -23,4 +23,8 @@ if __name__ == '__main__':
 
 for i in range(10):
     print(SensorData("Proximity_Sensor"))
-    print(DriveMotor("Motor", "0.05"))
+speed = 5
+print(DriveMotor("FLM", -speed))
+print(DriveMotor("FRM", speed))
+print(DriveMotor("BLM", -speed))
+print(DriveMotor("BRM", speed))
