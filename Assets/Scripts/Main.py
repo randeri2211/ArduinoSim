@@ -20,7 +20,8 @@ while running:
         print("Finished with " + str(e))
         s.close()
         running = False
-#
+
+
 """for i in range(10):
     print(SensorData("Proximity_Sensor"))
 speed = 1

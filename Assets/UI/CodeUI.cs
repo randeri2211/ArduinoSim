@@ -20,6 +20,7 @@ public class CodeUI : MonoBehaviour
         {
             var e = em.CreateEntity(typeof(EditQueueTag));
             em.AddBuffer<EditRequest>(e);
+            em.SetName(e, "EditQueue");
         }
     }
 

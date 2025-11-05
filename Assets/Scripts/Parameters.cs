@@ -1,4 +1,4 @@
 public static class Parameters
 {
-    public static bool EDITING = false;
+    public static bool EDITING = true;
 }

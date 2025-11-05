@@ -63,7 +63,6 @@ public partial struct RobotServerSystem : ISystem
                         }
                     case "SensorData":
                         {
-                            bool found = false;
                             foreach (var (psensor, hit) in
                             SystemAPI.Query<RefRO<ProximitySensor>, RefRO<ProximityHit>>())
                             {
@@ -71,7 +70,6 @@ public partial struct RobotServerSystem : ISystem
                                 {
                                     var distance = hit.ValueRO.Distance;
                                     RobotServerRuntime.Send($"{distance}");
-                                    found = true;
                                     break;
                                 }
                             }

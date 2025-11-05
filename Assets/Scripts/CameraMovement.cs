@@ -9,6 +9,8 @@ public class CameraMovement : MonoBehaviour
 {
     private Entity selectedEntity = Entity.Null;
     private bool isDragging = false;
+    private Unity.Mathematics.float3 grabOffset;
+    private float grabDistance;
     private Camera cam;
     [Header("Movement Settings")]
     public float moveSpeed = 5f;
@@ -137,6 +139,7 @@ public class CameraMovement : MonoBehaviour
             {
                 selectedEntity = physicsWorld.Bodies[hit.RigidBodyIndex].Entity;
                 isDragging = true;
+                grabDistance = hit.Fraction * maxDistance;
                 Debug.Log($"Selected entity: {selectedEntity.Index}");
             }
             else
@@ -149,8 +152,11 @@ public class CameraMovement : MonoBehaviour
         // While holding left mouse, move selected entity
         if (Mouse.current.leftButton.isPressed && isDragging && selectedEntity != Entity.Null)
         {
-            Debug.Log("Dragging");
-            var p = MouseWorld.RayToPlane(Input.mousePosition, cam, new float3(0, 0, 0), new float3(0, 1, 0));
+            UnityEngine.Ray dragRay = cam.ScreenPointToRay(Input.mousePosition);
+            var targetPoint = (Unity.Mathematics.float3)(dragRay.origin + dragRay.direction * grabDistance);
+
+            // Debug.Log("Dragging");
+            // var p = MouseWorld.RayToPlane(Input.mousePosition, cam, new float3(0, 0, 0), new float3(0, 1, 0));
 
             var queue = em.CreateEntityQuery(typeof(EditQueueTag)).GetSingletonEntity();
             var buf = em.GetBuffer<EditRequest>(queue);
@@ -158,7 +164,7 @@ public class CameraMovement : MonoBehaviour
             {
                 Op = EditOp.Move,
                 Target = selectedEntity,
-                P = p
+                P = targetPoint
             });
         }
 

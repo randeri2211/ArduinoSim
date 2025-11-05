@@ -27,7 +27,7 @@ public partial struct EditingSystem : ISystem
 
         var queueEntity = _queueQ.GetSingletonEntity();
         var edits = em.GetBuffer<EditRequest>(queueEntity);
-
+        // Debug.Log($"Editing length {edits.Length}");
         // Read prefab library once
         var libEntity = _libQ.GetSingletonEntity();
         var lib = em.GetBuffer<PrefabRef>(libEntity);
@@ -36,6 +36,7 @@ public partial struct EditingSystem : ISystem
         for (int i = 0; i < edits.Length; i++)
         {
             var r = edits[i];
+            Debug.Log($"edit {r.Op}");
             switch (r.Op)
             {
                 case EditOp.Spawn:
@@ -54,7 +55,8 @@ public partial struct EditingSystem : ISystem
                 }
 
                 case EditOp.Move:
-                {
+                    {
+                        Debug.Log("Moving obj");
                     if (!em.Exists(r.Target) || !em.HasComponent<LocalTransform>(r.Target)) break;
                     var lt = em.GetComponentData<LocalTransform>(r.Target);
                     lt.Position = r.P;
