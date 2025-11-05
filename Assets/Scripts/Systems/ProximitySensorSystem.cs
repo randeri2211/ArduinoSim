@@ -19,9 +19,13 @@ public partial struct ProximitySensorSystem : ISystem
         state.RequireForUpdate<ProximitySensor>();
     }
 
-    [BurstCompile]
+    // [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+        if (Parameters.EDITING)
+        {
+            return;
+        }
         var physics = SystemAPI.GetSingleton<PhysicsWorldSingleton>();
         var world = physics.CollisionWorld;
         var filter = CollisionFilter.Default;

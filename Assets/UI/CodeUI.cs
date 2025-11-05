@@ -1,10 +1,12 @@
 using UnityEngine;
 using UnityEngine.UIElements;
+using Unity.Entities;
 
 public class CodeUI : MonoBehaviour
 {
     public KeyCode toggleKey = KeyCode.F1;
     public KeyCode runKey = KeyCode.F2;
+    public KeyCode editModeKey = KeyCode.F3;
     public VisualTreeAsset overlayUxml;
 
     UIDocument _doc;
@@ -66,6 +68,12 @@ public class CodeUI : MonoBehaviour
         {
             Debug.Log("Running");
             RobotServerRuntime.Send($"{CodeField.value}");
+        }
+
+        if (Input.GetKeyDown(editModeKey))
+        {
+            Debug.Log("canceling");
+            Parameters.EDITING = !Parameters.EDITING;
         }
     }
 }
