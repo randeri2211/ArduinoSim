@@ -6,12 +6,23 @@ public class CodeUI : MonoBehaviour
 {
     public KeyCode toggleKey = KeyCode.F1;
     public KeyCode runKey = KeyCode.F2;
-    public KeyCode editModeKey = KeyCode.F3;
+    public KeyCode cancelKey = KeyCode.F3;
     public VisualTreeAsset overlayUxml;
 
     UIDocument _doc;
     VisualElement _overlay;
     TextField CodeField;
+
+    void Start()
+    {
+        var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+        if (em.CreateEntityQuery(ComponentType.ReadOnly<EditQueueTag>()).IsEmptyIgnoreFilter)
+        {
+            var e = em.CreateEntity(typeof(EditQueueTag));
+            em.AddBuffer<EditRequest>(e);
+        }
+    }
+
     void OnEnable()
     {
         _doc = GetComponent<UIDocument>();
@@ -67,13 +78,17 @@ public class CodeUI : MonoBehaviour
         if (Input.GetKeyDown(runKey))
         {
             Debug.Log("Running");
+            Parameters.EDITING = false;
             RobotServerRuntime.Send($"{CodeField.value}");
         }
 
-        if (Input.GetKeyDown(editModeKey))
+        if (Input.GetKeyDown(cancelKey))
         {
             Debug.Log("canceling");
-            Parameters.EDITING = !Parameters.EDITING;
+            Parameters.EDITING = true;
         }
     }
 }
+
+
+

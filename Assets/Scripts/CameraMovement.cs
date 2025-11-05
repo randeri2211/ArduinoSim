@@ -1,8 +1,14 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Unity.Mathematics;
+using Unity.Entities;
+using Unity.Physics;
+using Unity.Physics.Systems;
 
 public class CameraMovement : MonoBehaviour
 {
+    private Entity selectedEntity = Entity.Null;
+    private bool isDragging = false;
     private Camera cam;
     [Header("Movement Settings")]
     public float moveSpeed = 5f;
@@ -39,7 +45,8 @@ public class CameraMovement : MonoBehaviour
     void Update()
     {
         CheckMove();
-        if(!Cursor.visible){
+        if (!Cursor.visible)
+        {
             HandleMovement();
             if (enableMouseLook)
                 HandleMouseLook();
@@ -106,26 +113,70 @@ public class CameraMovement : MonoBehaviour
 
     void HandleClick()
     {
+        var world = World.DefaultGameObjectInjectionWorld;
+        var em = world.EntityManager;
+        var physicsWorldSingletonQuery = em.CreateEntityQuery(ComponentType.ReadOnly<PhysicsWorldSingleton>());
+        var physicsWorldSingleton = physicsWorldSingletonQuery.GetSingleton<PhysicsWorldSingleton>();
+        var collisionWorld = physicsWorldSingleton.CollisionWorld;
+        var physicsWorld   = physicsWorldSingleton.PhysicsWorld;
+        // Right-click toggles mouse visibility mode
+        if (Mouse.current.rightButton.wasPressedThisFrame)
+            Cursor.visible = !Cursor.visible;
+
         if (Mouse.current.leftButton.wasPressedThisFrame && !Cursor.visible)
         {
             // Ray from the center of this camera’s viewport
-            Ray ray = cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
-
-            if (Physics.Raycast(ray, out RaycastHit hit, maxDistance))
+            UnityEngine.Ray ray = cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+            var rayInput = new RaycastInput
             {
-                Debug.Log($"Hit: {hit.collider.gameObject.name}");
+                Start = ray.origin,
+                End = ray.origin + ray.direction * maxDistance,
+                Filter = CollisionFilter.Default
+            };
+            if (collisionWorld.CastRay(rayInput, out Unity.Physics.RaycastHit hit))
+            {
+                selectedEntity = physicsWorld.Bodies[hit.RigidBodyIndex].Entity;
+                isDragging = true;
+                Debug.Log($"Selected entity: {selectedEntity.Index}");
             }
             else
             {
-                Debug.Log("No object hit.");
+                selectedEntity = Entity.Null;
+                isDragging = false;
+                Debug.Log("No entity hit");
             }
         }
-
-        if (Mouse.current.rightButton.wasPressedThisFrame)
+        // While holding left mouse, move selected entity
+        if (Mouse.current.leftButton.isPressed && isDragging && selectedEntity != Entity.Null)
         {
-            // enableMouseLook = !enableMouseLook;
-            // Cursor.lockState = Cursor.lockState == CursorLockMode.Locked ? CursorLockMode.None : CursorLockMode.Locked;
-            Cursor.visible = !Cursor.visible;
+            Debug.Log("Dragging");
+            var p = MouseWorld.RayToPlane(Input.mousePosition, cam, new float3(0, 0, 0), new float3(0, 1, 0));
+
+            var queue = em.CreateEntityQuery(typeof(EditQueueTag)).GetSingletonEntity();
+            var buf = em.GetBuffer<EditRequest>(queue);
+            buf.Add(new EditRequest
+            {
+                Op = EditOp.Move,
+                Target = selectedEntity,
+                P = p
+            });
         }
+
+        // When released, stop dragging
+        if (Mouse.current.leftButton.wasReleasedThisFrame)
+            isDragging = false;
+    }
+}
+
+public static class MouseWorld
+{
+    public static float3 RayToPlane(Vector2 mousePos, Camera cam, float3 planeOrigin, float3 planeNormal)
+    {
+        UnityEngine.Ray ray = cam.ScreenPointToRay(mousePos);
+        var n = (Vector3)planeNormal;
+        float denom = Vector3.Dot(n, ray.direction);
+        if (math.abs(denom) < 1e-6f) return planeOrigin;
+        float t = Vector3.Dot((Vector3)planeOrigin - ray.origin, n) / denom;
+        return (float3)(ray.origin + ray.direction * t);
     }
 }

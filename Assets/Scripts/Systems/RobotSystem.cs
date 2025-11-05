@@ -59,7 +59,6 @@ public partial struct RobotServerSystem : ISystem
                                 }
 
                             }
-                            Debug.Log("Moving");
                             break;
                         }
                     case "SensorData":
@@ -76,7 +75,6 @@ public partial struct RobotServerSystem : ISystem
                                     break;
                                 }
                             }
-                            Debug.Log(found);
                             break;
                         }
                     default:

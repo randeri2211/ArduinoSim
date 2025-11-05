@@ -426,7 +426,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 987ac6c1b616a8348a330873aa74f5eb, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::RunPythonOnStart
+  m_EditorClassIdentifier: Assembly-CSharp::ServerStartup
   pythonFileName: Main.py
   pythonExePath: python
 --- !u!1660057539 &9223372036854775807
