@@ -14,7 +14,7 @@ public partial struct RobotServerSystem : ISystem
     public void OnCreate(ref SystemState state)
     {
         // Start server once when the world is created
-        RobotServerRuntime.Start(7001);
+        RobotServerRuntime.Start(7002);
         _nameLookup = state.GetComponentLookup<Name>(true);
     }
 
@@ -38,6 +38,7 @@ public partial struct RobotServerSystem : ISystem
                 {
                     case "MotorData":
                         {
+                            bool found = false;
                             foreach (var (joint, parent) in
                             SystemAPI.Query<RefRW<PhysicsJoint>, RefRO<Parent>>())
                             {
@@ -48,6 +49,7 @@ public partial struct RobotServerSystem : ISystem
                                     string[] data = cmd.data.Split(",");
                                     if (pName == data[0])
                                     {
+                                        found = true;
                                         float velocity;
                                         var success = float.TryParse(data[1], out velocity);
                                         var constraints = joint.ValueRW.GetConstraints();
@@ -57,21 +59,30 @@ public partial struct RobotServerSystem : ISystem
                                         break;
                                     }
                                 }
-
+                            }
+                            if (!found)
+                            {
+                                RobotServerRuntime.Send($"{found}");
                             }
                             break;
                         }
                     case "SensorData":
                         {
-                            foreach (var (psensor, hit) in
-                            SystemAPI.Query<RefRO<ProximitySensor>, RefRO<ProximityHit>>())
+                            bool found = false;
+                            foreach (var (psensor, hit, name) in
+                            SystemAPI.Query<RefRO<ProximitySensor>, RefRO<ProximityHit>, RefRO<Name>>())
                             {
-                                if (psensor.ValueRO.sensor.Name == cmd.data)
+                                if (name.ValueRO.Value == cmd.data)
                                 {
+                                    found = true;
                                     var distance = hit.ValueRO.Distance;
                                     RobotServerRuntime.Send($"{distance}");
                                     break;
                                 }
+                            }
+                            if (!found)
+                            {
+                                RobotServerRuntime.Send($"-2");
                             }
                             break;
                         }

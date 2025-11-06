@@ -1,19 +1,19 @@
 import json
 import socket
 
-connected = False
-while not connected:
-    try:
-        s = socket.socket()
-        s.settimeout(2.0)
-        s.connect(("127.0.0.1", 7001))
-        connected = True
-    except:
-        pass
+# connected = False
+# while not connected:
+#     try:
+#         s = socket.socket()
+#         s.settimeout(2.0)
+#         s.connect(("127.0.0.1", 7001))
+#         connected = True
+#     except:
+#         pass
 
-# s = socket.socket()
-# s.settimeout(2.0)
-# s.connect(("127.0.0.1", 7001))
+s = socket.socket()
+s.settimeout(2.0)
+s.connect(("127.0.0.1", 7002))
 
 def SensorData(sensor: str):
     if not type(sensor) == str:

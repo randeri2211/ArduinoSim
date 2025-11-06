@@ -51,6 +51,7 @@ public class RunPythonOnStart : MonoBehaviour
             if (!string.IsNullOrEmpty(e.Data))
                 UnityEngine.Debug.LogError($"[Python ERROR]: {e.Data}");
         };
+        UnityEngine.Debug.Log("starting server");
         process.Start();
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();

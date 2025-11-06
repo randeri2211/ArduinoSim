@@ -20,10 +20,6 @@ public class ProximitySensorAuthoring : MonoBehaviour
                 MaxRange = authoring.MaxRange,
                 WorkingVoltage = authoring.WorkingVoltage,
                 MeasureAngle = authoring.MeasureAngle,
-                sensor = new Sensor
-                {
-                Name = authoring.name,
-                },
             });
 
             AddComponent(entity, new ProximityHit {

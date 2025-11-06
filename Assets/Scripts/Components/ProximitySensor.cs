@@ -5,5 +5,4 @@ public struct ProximitySensor : IComponentData
     public float MaxRange;
     public int MeasureAngle;
     public float WorkingVoltage;
-    public Sensor sensor;
 }
