@@ -1,15 +1,10 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
-using Unity.Mathematics;
-using Unity.Entities;
-using Unity.Physics;
-using Unity.Physics.Systems;
 
 public class CameraMovement : MonoBehaviour
 {
-    private Entity selectedEntity = Entity.Null;
+    private Transform selectedTransform;
     private bool isDragging = false;
-    private Unity.Mathematics.float3 grabOffset;
     private float grabDistance;
     private Camera cam;
     [Header("Movement Settings")]
@@ -115,74 +110,45 @@ public class CameraMovement : MonoBehaviour
 
     void HandleClick()
     {
-        var world = World.DefaultGameObjectInjectionWorld;
-        var em = world.EntityManager;
-        var physicsWorldSingletonQuery = em.CreateEntityQuery(ComponentType.ReadOnly<PhysicsWorldSingleton>());
-        var physicsWorldSingleton = physicsWorldSingletonQuery.GetSingleton<PhysicsWorldSingleton>();
-        var collisionWorld = physicsWorldSingleton.CollisionWorld;
-        var physicsWorld   = physicsWorldSingleton.PhysicsWorld;
-        // Right-click toggles mouse visibility mode
+        // Right-click toggles mouse visibility mode -- always available, even while
+        // positioning a spawned part, so the player can still look around.
         if (Mouse.current.rightButton.wasPressedThisFrame)
             Cursor.visible = !Cursor.visible;
 
+        // Don't steal left-click while the player is positioning a spawned part -- that's
+        // PlacementPreview's job (left-click confirms placement there instead).
+        if (PlacementPreview.Current != null)
+            return;
+
         if (Mouse.current.leftButton.wasPressedThisFrame && !Cursor.visible)
         {
-            // Ray from the center of this camera’s viewport
-            UnityEngine.Ray ray = cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
-            var rayInput = new RaycastInput
+            // Ray from the center of this camera's viewport
+            Ray ray = cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+            if (Physics.Raycast(ray, out RaycastHit hit, maxDistance))
             {
-                Start = ray.origin,
-                End = ray.origin + ray.direction * maxDistance,
-                Filter = CollisionFilter.Default
-            };
-            if (collisionWorld.CastRay(rayInput, out Unity.Physics.RaycastHit hit))
-            {
-                selectedEntity = physicsWorld.Bodies[hit.RigidBodyIndex].Entity;
+                selectedTransform = hit.transform;
                 isDragging = true;
-                grabDistance = hit.Fraction * maxDistance;
-                Debug.Log($"Selected entity: {selectedEntity.Index}");
+                grabDistance = hit.distance;
+                Debug.Log($"Selected: {selectedTransform.name}");
             }
             else
             {
-                selectedEntity = Entity.Null;
+                selectedTransform = null;
                 isDragging = false;
-                Debug.Log("No entity hit");
+                Debug.Log("No object hit");
             }
         }
-        // While holding left mouse, move selected entity
-        if (Mouse.current.leftButton.isPressed && isDragging && selectedEntity != Entity.Null)
+
+        // While holding left mouse, move selected object
+        if (Mouse.current.leftButton.isPressed && isDragging && selectedTransform != null)
         {
-            UnityEngine.Ray dragRay = cam.ScreenPointToRay(Input.mousePosition);
-            var targetPoint = (Unity.Mathematics.float3)(dragRay.origin + dragRay.direction * grabDistance);
-
-            // Debug.Log("Dragging");
-            // var p = MouseWorld.RayToPlane(Input.mousePosition, cam, new float3(0, 0, 0), new float3(0, 1, 0));
-
-            var queue = em.CreateEntityQuery(typeof(EditQueueTag)).GetSingletonEntity();
-            var buf = em.GetBuffer<EditRequest>(queue);
-            buf.Add(new EditRequest
-            {
-                Op = EditOp.Move,
-                Target = selectedEntity,
-                P = targetPoint
-            });
+            Ray dragRay = cam.ScreenPointToRay(Input.mousePosition);
+            Vector3 targetPoint = dragRay.origin + dragRay.direction * grabDistance;
+            selectedTransform.position = targetPoint;
         }
 
         // When released, stop dragging
         if (Mouse.current.leftButton.wasReleasedThisFrame)
             isDragging = false;
-    }
-}
-
-public static class MouseWorld
-{
-    public static float3 RayToPlane(Vector2 mousePos, Camera cam, float3 planeOrigin, float3 planeNormal)
-    {
-        UnityEngine.Ray ray = cam.ScreenPointToRay(mousePos);
-        var n = (Vector3)planeNormal;
-        float denom = Vector3.Dot(n, ray.direction);
-        if (math.abs(denom) < 1e-6f) return planeOrigin;
-        float t = Vector3.Dot((Vector3)planeOrigin - ray.origin, n) / denom;
-        return (float3)(ray.origin + ray.direction * t);
     }
 }

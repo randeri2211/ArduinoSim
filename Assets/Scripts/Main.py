@@ -1,5 +1,3 @@
-# print("starting server1")
-#
 from UnityToPythonBridge.Utils import *
 
 print("starting server")
@@ -15,7 +13,7 @@ while running:
             print(f"failed at code execution due to {e}")
 
     except socket.timeout:
-        print("timeout")
+        pass
     except Exception as e:
         print("Finished with " + str(e))
         s.close()
@@ -23,9 +21,9 @@ while running:
 
 
 """for i in range(10):
-    print(SensorData("Proximity_Sensor"))
-speed = 1
-print(DriveMotor("FLM", -speed))
-print(DriveMotor("FRM", speed))
-print(DriveMotor("BLM", -speed))
-print(DriveMotor("BRM", speed))"""
+    print(SensorData("robot1", "Proximity_Sensor"))
+pwm = 128  # -255..255, signed duty cycle
+print(DriveMotor("robot1", "FLM", -pwm))
+print(DriveMotor("robot1", "FRM", pwm))
+print(DriveMotor("robot1", "BLM", -pwm))
+print(DriveMotor("robot1", "BRM", pwm))"""
