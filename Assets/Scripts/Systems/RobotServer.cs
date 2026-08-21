@@ -6,10 +6,7 @@ using System.Text;
 using System.IO;
 using System.Threading;
 using UnityEngine;
-using Unity.Burst;
-using Unity.Entities;
 
-[UpdateAfter(typeof(ProximitySensorSystem))]
 public static class RobotServerRuntime
 {
     public static readonly ConcurrentQueue<string> Commands = new();
@@ -22,7 +19,7 @@ public static class RobotServerRuntime
     static TcpClient _currentClient;
     static readonly object _clientLock = new();
 
-    public static void Start(int port = 7001)
+    public static void Start(int port)
     {
         if (_running) return;
         _running = true;
@@ -34,6 +31,16 @@ public static class RobotServerRuntime
     {
         _running = false;
         try { _listener?.Stop(); } catch { }
+        // Stopping the listener only unblocks a pending AcceptTcpClient() call --
+        // if the thread is instead blocked reading from an already-accepted client,
+        // closing that client's socket is what's needed to unblock it and let the
+        // thread actually exit, rather than leaking a background thread across
+        // Play Mode sessions (which happens if domain reload is disabled).
+        lock (_clientLock)
+        {
+            try { _currentClient?.Close(); } catch { }
+            _currentClient = null;
+        }
         try { _thread?.Join(250); } catch { }
         _listener = null;
         _thread = null;

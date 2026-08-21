@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.UIElements;
-using Unity.Entities;
 
 public class CodeUI : MonoBehaviour
 {
@@ -12,17 +11,6 @@ public class CodeUI : MonoBehaviour
     UIDocument _doc;
     VisualElement _overlay;
     TextField CodeField;
-
-    void Start()
-    {
-        var em = World.DefaultGameObjectInjectionWorld.EntityManager;
-        if (em.CreateEntityQuery(ComponentType.ReadOnly<EditQueueTag>()).IsEmptyIgnoreFilter)
-        {
-            var e = em.CreateEntity(typeof(EditQueueTag));
-            em.AddBuffer<EditRequest>(e);
-            em.SetName(e, "EditQueue");
-        }
-    }
 
     void OnEnable()
     {
@@ -79,6 +67,11 @@ public class CodeUI : MonoBehaviour
         if (Input.GetKeyDown(runKey))
         {
             Debug.Log("Running");
+            foreach (var mc in Microcontroller.Registry.Values)
+            {
+                mc.Rescan();
+                mc.SetStatic(false);
+            }
             Parameters.EDITING = false;
             RobotServerRuntime.Send($"{CodeField.value}");
         }
@@ -86,6 +79,8 @@ public class CodeUI : MonoBehaviour
         if (Input.GetKeyDown(cancelKey))
         {
             Debug.Log("canceling");
+            foreach (var mc in Microcontroller.Registry.Values)
+                mc.SetStatic(true);
             Parameters.EDITING = true;
         }
     }

@@ -1,0 +1,16 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <ui:VisualElement name="BuildUIRoot" style="position: absolute; top: 12px; right: 12px; left: auto; bottom: auto; width: 240px;">
+        <ui:Button text="+ Create New Robot" name="CreateRobotButton" />
+        <ui:VisualElement name="BuildPanel" style="display: none;">
+            <ui:Foldout text="Shapes" name="ShapesFoldout" value="true">
+                <ui:DropdownField name="ShapeDropdown" />
+                <ui:Button text="Spawn Shape" name="SpawnShapeButton" />
+            </ui:Foldout>
+            <ui:Foldout text="Components" name="ComponentsFoldout" value="true">
+                <ui:DropdownField name="CategoryDropdown" />
+                <ui:DropdownField name="ComponentDropdown" />
+                <ui:Button text="Spawn Component" name="SpawnComponentButton" />
+            </ui:Foldout>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
