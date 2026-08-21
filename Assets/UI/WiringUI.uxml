@@ -1,0 +1,9 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <ui:VisualElement name="WiringUIRoot" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: none; background-color: rgba(0, 0, 0, 0.55);">
+        <ui:Label text="Wiring -- click a pin, click empty grid points to bend, click a compatible pin to finish. Drag a component's label to move it. Esc cancels a wire in progress. (F4 to close)" name="HintLabel" style="color: white; margin: 8px; -unity-font-style: bold;" />
+        <ui:Label text="" name="RobotLabel" style="color: rgb(180, 220, 255); margin-left: 8px; margin-right: 8px; margin-bottom: 4px;" />
+        <ui:VisualElement name="GridCanvas" style="flex-grow: 1; margin: 8px; overflow: hidden;" />
+        <ui:Label text=" " name="StatusLabel" style="color: rgb(255, 120, 120); margin: 8px; -unity-font-style: bold;" />
+        <ui:Label text="" name="TooltipLabel" style="position: absolute; display: none; color: white; background-color: rgba(20, 20, 20, 0.9); padding: 4px 6px; border-radius: 4px;" />
+    </ui:VisualElement>
+</ui:UXML>

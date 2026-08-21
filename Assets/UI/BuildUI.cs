@@ -61,7 +61,10 @@ public class BuildUI : MonoBehaviour
     {
         if (_root == null) return;
 
-        bool editing = Parameters.EDITING;
+        // Steps aside whenever another full-panel UI (Wiring, Code, ...) claims the
+        // shared UI slot -- doesn't claim the slot itself since it has no toggle key of
+        // its own, it's just always-on-while-editing unless something else is showing.
+        bool editing = Parameters.EDITING && UIState.Open == UIPanel.None;
         _root.style.display = editing ? DisplayStyle.Flex : DisplayStyle.None;
         if (!editing) return;
 
@@ -121,8 +124,12 @@ public class BuildUI : MonoBehaviour
 
         var instance = Instantiate(arduinoUnoPrefab, GetPlacementPosition(), arduinoUnoPrefab.transform.rotation);
         var mc = instance.GetComponent<Microcontroller>();
-        if (mc != null && string.IsNullOrEmpty(mc.RobotId))
-            mc.RobotId = "Robot1";
+        if (mc != null)
+        {
+            if (string.IsNullOrEmpty(mc.RobotId))
+                mc.RobotId = "Robot1";
+            mc.Pins = PinLayout.Load(Constants.ArduinoUnoPinsResourcePath);
+        }
     }
 
     void SpawnSelectedShape()
@@ -157,6 +164,12 @@ public class BuildUI : MonoBehaviour
         }
 
         var go = Instantiate(prefab, GetPlacementPosition(), prefab.transform.rotation);
+        var peripheral = go.GetComponentInChildren<RobotPeripheral>();
+        if (peripheral != null)
+        {
+            peripheral.Pins = PinLayout.Load($"{entry.ResourcesPath}/{prefabName}");
+            peripheral.WiringGridPosition = WiringGrid.RandomPositionNearOrigin();
+        }
         BeginPlacement(go, prefabName);
     }
 
