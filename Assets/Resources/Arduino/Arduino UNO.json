@@ -1,0 +1,22 @@
+{
+  "pins": {
+    "A0": ["Analog", "Digital"],
+    "A1": ["Analog", "Digital"],
+    "A2": ["Analog", "Digital"],
+    "A3": ["Analog", "Digital"],
+    "A4": ["Analog", "Digital"],
+    "A5": ["Analog", "Digital"],
+    "D2": ["Digital"],
+    "D3": ["Digital", "PWM"],
+    "D4": ["Digital"],
+    "D5": ["Digital", "PWM"],
+    "D6": ["Digital", "PWM"],
+    "D7": ["Digital"],
+    "D8": ["Digital"],
+    "D9": ["Digital", "PWM"],
+    "D10": ["Digital", "PWM"],
+    "D11": ["Digital", "PWM"],
+    "D12": ["Digital"],
+    "D13": ["Digital"]
+  }
+}

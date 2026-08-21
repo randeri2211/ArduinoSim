@@ -1,17 +1,29 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// The addressable identity of one robot: aggregates its own Motor/ProximitySensor
-// children under local names, so RobotCommandDispatcher can resolve peripherals
-// per-robot instead of by a name that must be unique across the whole scene.
+// A wire's full routed path, not just its two endpoints -- the bends are the player's
+// deliberate schematic layout choice (see WiringUI) and persist with the connection.
+public class WireRoute
+{
+    public RobotPeripheral Peripheral;
+    public string PeripheralPin;
+    public List<Vector2Int> Bends = new(); // grid-cell coords, in click order from the mcu-pin side
+}
+
+// The addressable identity of one robot: holds its pin layout (loaded from a sidecar
+// JSON, see PinLayout) and the wiring table connecting its pins to attached
+// RobotPeripherals, so RobotCommandDispatcher can resolve peripherals per-robot by
+// microcontroller pin name instead of by LocalName.
 public class Microcontroller : MonoBehaviour
 {
     public string RobotId;
 
     public static readonly Dictionary<string, Microcontroller> Registry = new();
 
-    readonly Dictionary<string, Motor> _motors = new();
-    readonly Dictionary<string, ProximitySensor> _sensors = new();
+    // Loaded from this microcontroller's sidecar JSON by whoever spawns it (see BuildUI).
+    public Dictionary<string, List<string>> Pins = new();
+
+    readonly Dictionary<string, WireRoute> _wiring = new();
 
     void OnEnable()
     {
@@ -37,23 +49,114 @@ public class Microcontroller : MonoBehaviour
             Registry.Remove(RobotId);
     }
 
-    // Re-scans children for Motor/ProximitySensor components. Not called on enable --
-    // parts can be added/rearranged interactively many times before the robot is ever
-    // actually run, so scanning eagerly would just go stale. Called instead right before
-    // running code (see CodeUI), so the lookup always reflects the robot as it currently is.
-    public void Rescan()
+    // Connects a microcontroller pin to a peripheral's pin along the given routed path.
+    // Fails if either pin doesn't exist, is already wired, or the two pins' capability
+    // tags don't overlap at all.
+    public bool TryConnect(string mcuPin, RobotPeripheral peripheral, string peripheralPin, List<Vector2Int> bends, out string error)
     {
-        _motors.Clear();
-        foreach (var m in GetComponentsInChildren<Motor>())
-            _motors[m.LocalName] = m;
+        if (!Pins.TryGetValue(mcuPin, out var mcuCaps))
+        {
+            error = $"no such pin '{mcuPin}'";
+            return false;
+        }
+        if (peripheral == null || !peripheral.Pins.TryGetValue(peripheralPin, out var wantCaps))
+        {
+            error = $"no such component pin '{peripheralPin}'";
+            return false;
+        }
+        if (_wiring.ContainsKey(mcuPin))
+        {
+            error = $"'{mcuPin}' is already wired";
+            return false;
+        }
+        if (TryGetMcuPin(peripheral, peripheralPin, out _))
+        {
+            error = $"'{peripheral.LocalName}.{peripheralPin}' is already wired";
+            return false;
+        }
+        if (!PinLayout.Compatible(mcuCaps, wantCaps))
+        {
+            error = $"'{mcuPin}' is not compatible with '{peripheralPin}'";
+            return false;
+        }
 
-        _sensors.Clear();
-        foreach (var s in GetComponentsInChildren<ProximitySensor>())
-            _sensors[s.LocalName] = s;
+        _wiring[mcuPin] = new WireRoute
+        {
+            Peripheral = peripheral,
+            PeripheralPin = peripheralPin,
+            Bends = bends ?? new List<Vector2Int>(),
+        };
+        error = null;
+        return true;
     }
 
-    public bool TryGetMotor(string localName, out Motor motor) => _motors.TryGetValue(localName, out motor);
-    public bool TryGetSensor(string localName, out ProximitySensor sensor) => _sensors.TryGetValue(localName, out sensor);
+    public void Disconnect(string mcuPin) => _wiring.Remove(mcuPin);
+
+    public bool TryGetWire(string mcuPin, out RobotPeripheral peripheral, out string peripheralPin)
+    {
+        if (_wiring.TryGetValue(mcuPin, out var route))
+        {
+            peripheral = route.Peripheral;
+            peripheralPin = route.PeripheralPin;
+            return true;
+        }
+        peripheral = null;
+        peripheralPin = null;
+        return false;
+    }
+
+    // Full routed path (including bends), for WiringUI's rendering.
+    public bool TryGetRoute(string mcuPin, out WireRoute route) => _wiring.TryGetValue(mcuPin, out route);
+
+    // True if mcuPin is currently wired to something.
+    public bool IsWired(string mcuPin) => _wiring.ContainsKey(mcuPin);
+
+    // True if this peripheral's own pin is currently wired to something.
+    public bool IsWired(RobotPeripheral peripheral, string peripheralPin) => TryGetMcuPin(peripheral, peripheralPin, out _);
+
+    // Reverse lookup: which microcontroller pin (if any) is this peripheral's pin wired to.
+    public bool TryGetMcuPin(RobotPeripheral peripheral, string peripheralPin, out string mcuPin)
+    {
+        foreach (var kv in _wiring)
+        {
+            if (kv.Value.Peripheral == peripheral && kv.Value.PeripheralPin == peripheralPin)
+            {
+                mcuPin = kv.Key;
+                return true;
+            }
+        }
+        mcuPin = null;
+        return false;
+    }
+
+    public bool TryGetMotor(string mcuPin, out Motor motor)
+    {
+        motor = TryGetWire(mcuPin, out var peripheral, out _) ? peripheral as Motor : null;
+        return motor != null;
+    }
+
+    public bool TryGetSensor(string mcuPin, out ProximitySensor sensor)
+    {
+        sensor = TryGetWire(mcuPin, out var peripheral, out _) ? peripheral as ProximitySensor : null;
+        return sensor != null;
+    }
+
+    // Prunes wires whose peripheral was destroyed or detached from this robot. Not
+    // called automatically -- parts can be added/rearranged/rewired many times before
+    // the robot is ever actually run. Called instead right before running code (see
+    // CodeUI), so wiring always reflects the robot as it currently is.
+    public void Rescan()
+    {
+        var stale = new List<string>();
+        foreach (var kv in _wiring)
+        {
+            var peripheral = kv.Value.Peripheral;
+            if (peripheral == null || !peripheral.transform.IsChildOf(transform))
+                stale.Add(kv.Key);
+        }
+        foreach (var mcuPin in stale)
+            _wiring.Remove(mcuPin);
+    }
 
     // Static (kinematic) while building -- immune to gravity/collisions so parts don't
     // get jostled while being attached. Dynamic once actually run, so the robot behaves

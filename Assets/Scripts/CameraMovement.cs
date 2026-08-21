@@ -44,7 +44,10 @@ public class CameraMovement : MonoBehaviour
         CheckMove();
         if (!Cursor.visible)
         {
-            HandleMovement();
+            // WASD drives panning inside the wiring schematic while it's open instead --
+            // don't also fly the player camera around underneath it.
+            if (UIState.Open != UIPanel.Wiring)
+                HandleMovement();
             if (enableMouseLook)
                 HandleMouseLook();
         }

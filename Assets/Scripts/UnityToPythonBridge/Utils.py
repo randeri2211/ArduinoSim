@@ -21,34 +21,39 @@ while not connected:
         time.sleep(0.1)
 
 def _send_command(cmd_type: str, robot: str, data: str) -> str:
+    """Raw send/receive, no interpretation of the reply -- callers decide what the
+    reply means (also reused by sandbox_runner as a pure relay primitive)."""
     cmd = {"type": cmd_type, "robot": robot, "data": data}
     s.sendall(json.dumps(cmd).encode() + b"\n")
     print("sent " + str(cmd))
-    reply = s.recv(1024).decode().strip()
-    if reply == "ROBOT_NOT_FOUND":
-        raise LookupError(f"robot '{robot}' not found")
-    return reply
+    return s.recv(1024).decode().strip()
 
 
-def SensorData(robot: str, sensor: str):
-    if not type(robot) == str or not type(sensor) == str:
+def SensorData(robot: str, pin: str):
+    """pin: the microcontroller pin the sensor is wired to (e.g. "A0"), not its name."""
+    if not type(robot) == str or not type(pin) == str:
         print("Invalid robot/sensor type")
         return -2
-    reply = _send_command("SensorData", robot, sensor)
+    reply = _send_command("SensorData", robot, pin)
+    if reply == "ROBOT_NOT_FOUND":
+        raise LookupError(f"robot '{robot}' not found")
     if reply == "SENSOR_NOT_FOUND":
-        raise LookupError(f"sensor '{sensor}' not found on robot '{robot}'")
+        raise LookupError(f"no sensor wired to pin '{pin}' on robot '{robot}'")
     return float(reply)
 
 
-def DriveMotor(robot: str, motor: str, pwm: int):
-    """pwm: signed duty cycle, -255..255. Sign = direction, magnitude = drive strength.
+def DriveMotor(robot: str, pin: str, pwm: int):
+    """pin: the microcontroller pin the motor is wired to (e.g. "D3"), not its name.
+    pwm: signed duty cycle, -255..255. Sign = direction, magnitude = drive strength.
     Applies constant torque scaled from the motor's MaxTorque spec -- not a target speed."""
-    if not type(robot) == str or not type(motor) == str:
+    if not type(robot) == str or not type(pin) == str:
         print("Invalid robot/motor type")
         return -2
     if not (-PWM_MAX <= pwm <= PWM_MAX):
         raise ValueError(f"pwm out of range: {pwm} (must be -{PWM_MAX}..{PWM_MAX})")
-    reply = _send_command("MotorData", robot, f"{motor},{pwm}")
+    reply = _send_command("MotorData", robot, f"{pin},{pwm}")
+    if reply == "ROBOT_NOT_FOUND":
+        raise LookupError(f"robot '{robot}' not found")
     if reply == "MOTOR_NOT_FOUND":
-        raise LookupError(f"motor '{motor}' not found on robot '{robot}'")
-    return True
+        raise LookupError(f"no motor wired to pin '{pin}' on robot '{robot}'")
+    return reply == "True"

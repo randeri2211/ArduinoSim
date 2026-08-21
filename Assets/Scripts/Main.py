@@ -1,16 +1,15 @@
 from UnityToPythonBridge.Utils import *
+from UnityToPythonBridge import sandbox_runner
 
 print("starting server")
+sandbox_runner.init()
+
 # Connect To Unity System Socket
 running = True
 while running:
     try:
         code = s.recv(1024).decode().strip()
-        try:
-            print(code)
-            exec(code)
-        except Exception as e:
-            print(f"failed at code execution due to {e}")
+        sandbox_runner.run_code(code)
 
     except socket.timeout:
         pass
@@ -18,6 +17,8 @@ while running:
         print("Finished with " + str(e))
         s.close()
         running = False
+
+sandbox_runner.shutdown()
 
 
 """for i in range(10):

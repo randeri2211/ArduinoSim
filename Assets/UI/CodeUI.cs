@@ -54,7 +54,7 @@ public class CodeUI : MonoBehaviour
         // Simple keybind; change to your preferred key
         if (Input.GetKeyDown(toggleKey))
         {
-            bool nowVisible = _overlay.style.display == DisplayStyle.None;
+            bool nowVisible = UIState.Toggle(UIPanel.Code);
             _overlay.style.display = nowVisible ? DisplayStyle.Flex : DisplayStyle.None;
 
             if (nowVisible && CodeField != null)
@@ -63,6 +63,10 @@ public class CodeUI : MonoBehaviour
                 CodeField.Focus();
             }
         }
+
+        // Another panel (Wiring, ...) claimed the shared UI slot -- step aside.
+        if (UIState.Open != UIPanel.Code && _overlay.style.display != DisplayStyle.None)
+            _overlay.style.display = DisplayStyle.None;
 
         if (Input.GetKeyDown(runKey))
         {
