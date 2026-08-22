@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class ProximitySensor : RobotPeripheral
+public class ProximitySensor : Sensor
 {
     [Header("Sensor Settings")]
     public float MinRange = 0.02f;
@@ -80,6 +80,10 @@ public class ProximitySensor : RobotPeripheral
         Distance = bestDist;                                  // -1 if none
         Direction = bestDist > 0 ? bestDir : Vector3.zero;     // saved for debug draw
     }
+
+    // InvariantCulture avoids formatting e.g. 1.5 as "1,5" on non-US-locale machines,
+    // which would silently break Python's float() parsing on the other end.
+    public override string Read(string peripheralPin) => Distance.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     void Update()
     {

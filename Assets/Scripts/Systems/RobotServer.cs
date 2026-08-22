@@ -53,7 +53,6 @@ public static class RobotServerRuntime
             _listener = new TcpListener(IPAddress.Loopback, port);
             _listener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
             _listener.Start();
-            Debug.Log($"[RobotServer] Listening on 127.0.0.1:{port}");
 
             var buf = new byte[4096];
 
@@ -62,7 +61,6 @@ public static class RobotServerRuntime
                 // Wait for a client
                 using var client = _listener.AcceptTcpClient();
                 lock (_clientLock) _currentClient = client;
-                Debug.Log("[RobotServer] accepted client");
 
                 using var stream = client.GetStream();
                 var sb = new StringBuilder();
@@ -99,7 +97,6 @@ public static class RobotServerRuntime
                     }
                 }
 
-                Debug.Log("[RobotServer] client closed");
                 lock (_clientLock) _currentClient = null;
             }
         }
@@ -119,7 +116,6 @@ public static class RobotServerRuntime
             {
                 var data = Encoding.UTF8.GetBytes(msg + "\n");
                 _currentClient.GetStream().Write(data, 0, data.Length);
-                Debug.Log($"[RobotServer] Sent: {msg}");
             }
             catch (Exception e)
             {
