@@ -135,9 +135,12 @@ public class Microcontroller : MonoBehaviour
         return motor != null;
     }
 
-    public bool TryGetSensor(string mcuPin, out ProximitySensor sensor)
+    // peripheralPin is returned too so multi-pin sensors (e.g. ColorSensor's R/G/B) know
+    // which of their pins was actually wired to mcuPin.
+    public bool TryGetSensor(string mcuPin, out Sensor sensor, out string peripheralPin)
     {
-        sensor = TryGetWire(mcuPin, out var peripheral, out _) ? peripheral as ProximitySensor : null;
+        bool found = TryGetWire(mcuPin, out var peripheral, out peripheralPin);
+        sensor = found ? peripheral as Sensor : null;
         return sensor != null;
     }
 

@@ -21,6 +21,14 @@ public class BuildUI : MonoBehaviour
     DropdownField _componentDropdown;
     Button _spawnComponentButton;
 
+    // Resolved once in RefreshComponentDropdown (where Resources.LoadAll + the
+    // RobotPeripheral filter already disambiguate the real prefab from any raw mesh
+    // source file sharing its folder/base name) and reused directly at spawn time,
+    // rather than re-deriving a string path and calling Resources.Load again -- doing
+    // that re-lookup was ambiguous whenever a prefab and its own .obj/.fbx source shared
+    // the same name in the same folder, and could silently resolve to the raw mesh.
+    readonly Dictionary<string, GameObject> _componentPrefabs = new();
+
     void OnEnable()
     {
         _doc = GetComponent<UIDocument>();
@@ -77,6 +85,7 @@ public class BuildUI : MonoBehaviour
     {
         var entry = FindCategory(SelectedCategory());
         var items = new List<string>();
+        _componentPrefabs.Clear();
         if (entry.ResourcesPath != null)
         {
             // Resources.LoadAll also picks up raw imported mesh source files (.obj/.fbx)
@@ -85,8 +94,11 @@ public class BuildUI : MonoBehaviour
             // (AssetDatabase/PrefabUtility are Editor-only). Only list things that are
             // actually usable robot components.
             foreach (var prefab in Resources.LoadAll<GameObject>(entry.ResourcesPath))
-                if (prefab.GetComponentInChildren<RobotPeripheral>() != null)
-                    items.Add(prefab.name);
+            {
+                if (prefab.GetComponentInChildren<RobotPeripheral>() == null) continue;
+                items.Add(prefab.name);
+                _componentPrefabs[prefab.name] = prefab;
+            }
         }
         _componentDropdown.choices = items;
         _componentDropdown.index = items.Count > 0 ? 0 : -1;
@@ -156,10 +168,9 @@ public class BuildUI : MonoBehaviour
 
         var entry = FindCategory(SelectedCategory());
         string prefabName = _componentDropdown.choices[_componentDropdown.index];
-        var prefab = Resources.Load<GameObject>($"{entry.ResourcesPath}/{prefabName}");
-        if (prefab == null)
+        if (!_componentPrefabs.TryGetValue(prefabName, out var prefab) || prefab == null)
         {
-            Debug.LogError($"BuildUI: could not load prefab '{prefabName}' from '{entry.ResourcesPath}'.");
+            Debug.LogError($"BuildUI: no resolved prefab for '{prefabName}' -- try reselecting the category.");
             return;
         }
 
@@ -167,7 +178,11 @@ public class BuildUI : MonoBehaviour
         var peripheral = go.GetComponentInChildren<RobotPeripheral>();
         if (peripheral != null)
         {
-            peripheral.Pins = PinLayout.Load($"{entry.ResourcesPath}/{prefabName}");
+            // Every component lives at "<Category>/<Name>/<Name>" -- one subfolder per
+            // component, named to match its own prefab/json. Only the JSON needs a
+            // string-path lookup (no ambiguity risk -- nothing else produces a TextAsset
+            // at that path).
+            peripheral.Pins = PinLayout.Load($"{entry.ResourcesPath}/{prefabName}/{prefabName}");
             peripheral.WiringGridPosition = WiringGrid.RandomPositionNearOrigin();
         }
         BeginPlacement(go, prefabName);

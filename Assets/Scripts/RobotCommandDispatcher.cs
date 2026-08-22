@@ -53,8 +53,8 @@ public class RobotCommandDispatcher : MonoBehaviour
                     }
                     case "SensorData":
                     {
-                        bool found = mc.TryGetSensor(cmd.data, out var sensor);
-                        RobotServerRuntime.Send(found ? $"{sensor.Distance}" : "SENSOR_NOT_FOUND");
+                        bool found = mc.TryGetSensor(cmd.data, out var sensor, out var peripheralPin);
+                        RobotServerRuntime.Send(found ? sensor.Read(peripheralPin) : "SENSOR_NOT_FOUND");
                         break;
                     }
                     default:
