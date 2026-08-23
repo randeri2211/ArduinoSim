@@ -123,6 +123,30 @@ public class CameraMovement : MonoBehaviour
         if (PlacementPreview.Current != null)
             return;
 
+        // Free-cursor mode: precise point-and-click to re-select an already-placed
+        // Shape and bring its ShapeTransformGizmo back up. Needs a real, moving cursor
+        // position, unlike the crosshair-based raw-select/drag below which only makes
+        // sense while the cursor is locked (FPS look-around mode) -- so this is gated
+        // on Cursor.visible, the opposite of that block, and the two can never fire on
+        // the same click.
+        if (Cursor.visible && Mouse.current.leftButton.wasPressedThisFrame
+            && Parameters.EDITING && UIState.Open == UIPanel.None)
+        {
+            Ray selectRay = cam.ScreenPointToRay(Input.mousePosition);
+            if (Physics.Raycast(selectRay, out var selectHit, maxDistance))
+            {
+                var editable = selectHit.collider.GetComponentInParent<EditableShape>();
+                if (editable != null)
+                {
+                    if (ShapeTransformGizmo.Current != null && ShapeTransformGizmo.Current.gameObject != editable.gameObject)
+                        Destroy(ShapeTransformGizmo.Current);
+                    if (editable.GetComponent<ShapeTransformGizmo>() == null)
+                        editable.gameObject.AddComponent<ShapeTransformGizmo>();
+                    return;
+                }
+            }
+        }
+
         if (Mouse.current.leftButton.wasPressedThisFrame && !Cursor.visible)
         {
             // Ray from the center of this camera's viewport
