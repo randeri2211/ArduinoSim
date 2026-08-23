@@ -69,10 +69,10 @@ public class PlacementPreview : MonoBehaviour
         foreach (var c in _colliders)
             c.isTrigger = true;
 
+        gameObject.AddComponent<EditablePart>().IsComponent = prefabBaseName != null;
         if (prefabBaseName == null)
         {
-            gameObject.AddComponent<EditableShape>();
-            gameObject.AddComponent<ShapeTransformGizmo>();
+            gameObject.AddComponent<TransformGizmo>();
         }
         else
         {
@@ -109,7 +109,7 @@ public class PlacementPreview : MonoBehaviour
     // this component's own GameObject. A compound part (like a motor with its own
     // Rigidbody on a child) would silently never trigger these callbacks here at all,
     // so this queries directly instead of depending on that routing.
-    // Excludes the Gizmo layer (once created -- see ShapeTransformGizmo) so a shape's
+    // Excludes the Gizmo layer (once created -- see TransformGizmo) so a shape's
     // own scale/rotate handles, which sit right at its faces, never register as
     // something it's "touching". LayerMask.NameToLayer returns -1 until that layer
     // actually exists, and 1 << -1 is 0, so this is just ~0 (everything) until then.
@@ -233,7 +233,7 @@ public class PlacementPreview : MonoBehaviour
         var rotator = GetComponent<PlacementRotator>();
         if (rotator != null) Destroy(rotator);
 
-        var gizmo = GetComponent<ShapeTransformGizmo>();
+        var gizmo = GetComponent<TransformGizmo>();
         if (gizmo != null) Destroy(gizmo);
 
         Destroy(this);

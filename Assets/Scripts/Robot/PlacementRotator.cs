@@ -5,7 +5,7 @@ using UnityEngine;
 // alignment it computes, rather than this component rotating the transform directly
 // (rotating around world-up doesn't make sense once the component is aligned to an
 // arbitrary surface normal). Only ever attached to Components, never Shapes -- Shapes
-// use ShapeTransformGizmo instead.
+// use TransformGizmo instead.
 public class PlacementRotator : MonoBehaviour
 {
     public KeyCode rotateKey = KeyCode.R;

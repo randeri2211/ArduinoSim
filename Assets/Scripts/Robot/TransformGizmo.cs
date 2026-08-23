@@ -1,15 +1,15 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// Runtime scale/rotate gizmo for a Shape -- arrows on the +X/+Y/+Z faces (Scale mode)
-// or rings around each axis (Rotate mode), toggled with a key. Fully self-contained, no
-// dependency on PlacementPreview state, so it works identically whether attached during
-// initial placement or added later by re-selecting an already-placed shape (see
-// CameraMovement.HandleClick).
-public class ShapeTransformGizmo : MonoBehaviour
+// Runtime transform gizmo for a Shape or Component -- arrows on the +X/+Y/+Z faces for
+// Scale (Shapes only) or Move, rings around each axis for Rotate, toggled with a key.
+// Fully self-contained, no dependency on PlacementPreview state, so it works
+// identically whether attached during initial placement or added later by re-selecting
+// an already-placed part (see CameraMovement.HandleClick).
+public class TransformGizmo : MonoBehaviour
 {
     // Only one gizmo active at a time -- attaching a new one closes whatever's current.
-    public static ShapeTransformGizmo Current { get; private set; }
+    public static TransformGizmo Current { get; private set; }
 
     public KeyCode toggleModeKey = KeyCode.R;
     public KeyCode closeKey = KeyCode.Escape;
@@ -18,7 +18,7 @@ public class ShapeTransformGizmo : MonoBehaviour
     // constant size on screen. Tune in the Inspector if they read too big/small.
     public float handleScreenSize = 0.3f;
 
-    enum GizmoMode { Scale, Rotate }
+    enum GizmoMode { Scale, Rotate, Move }
 
     static readonly Vector3[] Axes = { Vector3.right, Vector3.up, Vector3.forward };
     static readonly Color[] AxisColors = { Color.red, Color.green, Color.blue };
@@ -30,9 +30,19 @@ public class ShapeTransformGizmo : MonoBehaviour
     const float RingClickTolerance = 0.06f;
     const float ScaleSensitivity = 0.01f;
     const float MinScale = 0.05f;
+    const float MoveSensitivity = 0.001f;
 
     GizmoMode _mode = GizmoMode.Scale;
     Vector3 _localExtents;
+
+    // Components (Motor, sensors) don't support Scale here -- resizing a motor or
+    // sensor doesn't mean anything the way resizing a Shape does -- so the mode cycle
+    // skips it for them and Move is the default mode instead of Scale. Read off
+    // EditablePart.IsComponent (set once at spawn, when it's unambiguous) rather than
+    // searching for RobotPeripheral here -- that search would walk this object's WHOLE
+    // subtree and wrongly flag a Shape as a Component just because some other Component
+    // happens to be attached to it further down the hierarchy.
+    bool _isComponent;
 
     // Each attached child's anchor point on this shape's own canonical (unscaled)
     // surface, captured ONCE when the gizmo attaches and reused for every scale drag
@@ -47,6 +57,7 @@ public class ShapeTransformGizmo : MonoBehaviour
     readonly Dictionary<Transform, Vector3> _anchorLocalCache = new();
 
     readonly GameObject[] _arrows = new GameObject[3];
+    readonly GameObject[] _moveArrows = new GameObject[3];
     readonly LineRenderer[] _rings = new LineRenderer[3];
 
     int _draggingAxis = -1;
@@ -54,13 +65,24 @@ public class ShapeTransformGizmo : MonoBehaviour
     Vector3 _dragStartScale;
     Vector2 _lastMouseScreen;
 
-    // Any Rigidbody among this shape's descendants (e.g. a Motor's, physics-driven via
+    // Move-drag state -- snapshotted at drag-start so a drag that ends up touching
+    // nothing can be reverted wholesale, and so the whole drag is measured from one
+    // fixed reference rather than accumulating per-frame (matching how Scale tracks
+    // _dragStartScale rather than incrementally re-scaling each frame).
+    Vector3 _dragStartPosition;
+    Quaternion _dragStartRotation;
+    List<Collider> _dragColliders;
+    Collider _lastTouching;
+
+    // Any Rigidbody among this part's descendants (e.g. a Motor's, physics-driven via
     // its own HingeJoint) with whether it started kinematic, so it can be restored on
     // close. Non-kinematic Rigidbodies don't follow ordinary Transform changes -- only
-    // physics simulation moves them -- so without this, rotating/scaling the shape here
-    // would leave a mounted Motor's shaft physically behind while its housing (a plain
+    // physics simulation moves them -- so without this, editing the part here would
+    // leave a mounted Motor's shaft physically behind while its housing (a plain
     // Transform child, no Rigidbody of its own) follows correctly. Same fix
-    // PlacementPreview already applies during initial placement, for the same reason.
+    // PlacementPreview already applies during initial placement, for the same reason,
+    // and covers Move as well as Scale/Rotate since it's just locked for this
+    // component's whole lifetime regardless of mode.
     readonly List<(Rigidbody rb, bool wasKinematic)> _lockedRigidbodies = new();
 
     void Awake()
@@ -70,6 +92,7 @@ public class ShapeTransformGizmo : MonoBehaviour
 
         var mesh = GetComponent<MeshFilter>()?.sharedMesh;
         _localExtents = mesh != null ? mesh.bounds.extents : Vector3.one * 0.5f;
+        _isComponent = GetComponent<EditablePart>()?.IsComponent ?? false;
 
         for (int i = 0; i < transform.childCount; i++)
         {
@@ -85,8 +108,9 @@ public class ShapeTransformGizmo : MonoBehaviour
         }
 
         BuildArrows();
+        BuildMoveArrows();
         BuildRings();
-        SetMode(GizmoMode.Scale);
+        SetMode(_isComponent ? GizmoMode.Move : GizmoMode.Scale);
     }
 
     void OnDestroy()
@@ -100,6 +124,8 @@ public class ShapeTransformGizmo : MonoBehaviour
         // GameObjects it built -- without this they'd stay behind as orphaned children
         // every time a gizmo closes, and the next one built on top would double up.
         foreach (var arrow in _arrows)
+            if (arrow != null) Destroy(arrow);
+        foreach (var arrow in _moveArrows)
             if (arrow != null) Destroy(arrow);
         foreach (var ring in _rings)
             if (ring != null) Destroy(ring.gameObject);
@@ -151,53 +177,66 @@ public class ShapeTransformGizmo : MonoBehaviour
         return mat;
     }
 
+    // Shared by both BuildArrows (Scale, cube tip) and BuildMoveArrows (Move, sphere
+    // tip) -- same shaft, same click-handle setup, only the tip shape and GizmoHandle
+    // axis differ, so a glance at the handle shape tells the player which mode a set of
+    // arrows belongs to.
+    GameObject BuildAxisArrow(int axis, string namePrefix, PrimitiveType tipType)
+    {
+        var arrow = new GameObject($"{namePrefix}{axis}");
+        // Deliberately NOT parented to the shape -- that transform's scale is what the
+        // player is actively editing via this gizmo, and Transform has no "world scale"
+        // setter (only the read-only lossyScale getter), so a child's rendered size
+        // always inherits a non-uniformly-scaled parent's scale no matter what
+        // localScale is set to. Position/rotation are tracked to the shape directly in
+        // world space each frame in RepositionHandles(), and scale is driven purely by
+        // camera distance so handles stay a constant size on screen regardless of the
+        // shape's size or zoom.
+
+        var shaft = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        shaft.name = "Shaft";
+        shaft.transform.SetParent(arrow.transform, false);
+        Destroy(shaft.GetComponent<Collider>());
+        shaft.transform.localPosition = new Vector3(0f, ArrowLength * 0.5f, 0f);
+        shaft.transform.localScale = new Vector3(ArrowShaftRadius, ArrowLength * 0.5f, ArrowShaftRadius);
+        shaft.GetComponent<Renderer>().material = MakeUnlitMaterial(AxisColors[axis]);
+
+        var tip = GameObject.CreatePrimitive(tipType);
+        tip.name = "Tip";
+        tip.transform.SetParent(arrow.transform, false);
+        tip.transform.localPosition = new Vector3(0f, ArrowLength, 0f);
+        tip.transform.localScale = Vector3.one * ArrowTipSize;
+        tip.GetComponent<Renderer>().material = MakeUnlitMaterial(AxisColors[axis]);
+        Destroy(tip.GetComponent<Collider>());
+
+        int gizmoLayer = LayerMask.NameToLayer("Gizmo");
+        if (gizmoLayer >= 0)
+        {
+            arrow.layer = gizmoLayer;
+            shaft.layer = gizmoLayer;
+            tip.layer = gizmoLayer;
+        }
+
+        var sphere = tip.AddComponent<SphereCollider>();
+        sphere.isTrigger = true;
+        sphere.radius = 1.5f; // local space -- scales with the tip's own small transform
+
+        var handle = tip.AddComponent<GizmoHandle>();
+        handle.axisIndex = axis;
+
+        return arrow;
+    }
+
     void BuildArrows()
     {
         for (int i = 0; i < 3; i++)
-        {
-            var arrow = new GameObject($"ScaleArrow{i}");
-            // Deliberately NOT parented to the shape -- that transform's scale is what
-            // the player is actively editing via this gizmo, and Transform has no
-            // "world scale" setter (only the read-only lossyScale getter), so a child's
-            // rendered size always inherits a non-uniformly-scaled parent's scale no
-            // matter what localScale is set to. Position/rotation are tracked to the
-            // shape directly in world space each frame in RepositionHandles(), and
-            // scale is driven purely by camera distance so handles stay a constant size
-            // on screen regardless of the shape's size or zoom.
+            _arrows[i] = BuildAxisArrow(i, "ScaleArrow", PrimitiveType.Cube);
+    }
 
-            var shaft = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            shaft.name = "Shaft";
-            shaft.transform.SetParent(arrow.transform, false);
-            Destroy(shaft.GetComponent<Collider>());
-            shaft.transform.localPosition = new Vector3(0f, ArrowLength * 0.5f, 0f);
-            shaft.transform.localScale = new Vector3(ArrowShaftRadius, ArrowLength * 0.5f, ArrowShaftRadius);
-            shaft.GetComponent<Renderer>().material = MakeUnlitMaterial(AxisColors[i]);
-
-            var tip = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            tip.name = "Tip";
-            tip.transform.SetParent(arrow.transform, false);
-            tip.transform.localPosition = new Vector3(0f, ArrowLength, 0f);
-            tip.transform.localScale = Vector3.one * ArrowTipSize;
-            tip.GetComponent<Renderer>().material = MakeUnlitMaterial(AxisColors[i]);
-            Destroy(tip.GetComponent<Collider>());
-
-            int gizmoLayer = LayerMask.NameToLayer("Gizmo");
-            if (gizmoLayer >= 0)
-            {
-                arrow.layer = gizmoLayer;
-                shaft.layer = gizmoLayer;
-                tip.layer = gizmoLayer;
-            }
-
-            var sphere = tip.AddComponent<SphereCollider>();
-            sphere.isTrigger = true;
-            sphere.radius = 1.5f; // local space -- scales with the tip's own small transform
-
-            var handle = tip.AddComponent<GizmoHandle>();
-            handle.axisIndex = i;
-
-            _arrows[i] = arrow;
-        }
+    void BuildMoveArrows()
+    {
+        for (int i = 0; i < 3; i++)
+            _moveArrows[i] = BuildAxisArrow(i, "MoveArrow", PrimitiveType.Sphere);
     }
 
     void BuildRings()
@@ -205,7 +244,7 @@ public class ShapeTransformGizmo : MonoBehaviour
         for (int i = 0; i < 3; i++)
         {
             var ringObj = new GameObject($"RotateRing{i}");
-            // Not parented to the shape either (see BuildArrows) -- a non-uniformly
+            // Not parented to the shape either (see BuildAxisArrow) -- a non-uniformly
             // scaled shape would otherwise stretch these circles into ellipses.
             // Position/rotation are tracked to the shape each frame in
             // RepositionHandles(), with a single shared "bounding sphere" radius so all
@@ -226,11 +265,26 @@ public class ShapeTransformGizmo : MonoBehaviour
     void SetMode(GizmoMode mode)
     {
         _mode = mode;
-        bool scaling = mode == GizmoMode.Scale;
         foreach (var arrow in _arrows)
-            if (arrow != null) arrow.SetActive(scaling);
+            if (arrow != null) arrow.SetActive(mode == GizmoMode.Scale);
+        foreach (var arrow in _moveArrows)
+            if (arrow != null) arrow.SetActive(mode == GizmoMode.Move);
         foreach (var ring in _rings)
-            if (ring != null) ring.gameObject.SetActive(!scaling);
+            if (ring != null) ring.gameObject.SetActive(mode == GizmoMode.Rotate);
+    }
+
+    // Cycles Scale -> Rotate -> Move -> Scale for a Shape; Components skip Scale
+    // entirely (see _isComponent) and just toggle between Rotate and Move.
+    GizmoMode NextMode(GizmoMode mode)
+    {
+        if (_isComponent)
+            return mode == GizmoMode.Rotate ? GizmoMode.Move : GizmoMode.Rotate;
+        return mode switch
+        {
+            GizmoMode.Scale => GizmoMode.Rotate,
+            GizmoMode.Rotate => GizmoMode.Move,
+            _ => GizmoMode.Scale,
+        };
     }
 
     Vector3 CurrentExtents() => new Vector3(
@@ -242,18 +296,27 @@ public class ShapeTransformGizmo : MonoBehaviour
 
     void RepositionHandles()
     {
-        // Arrows aren't parented to the shape (see BuildArrows), so position/rotation
+        // Arrows aren't parented to the shape (see BuildAxisArrow), so position/rotation
         // are tracked to it directly in world space, and scale comes purely from camera
         // distance -- constant on-screen size, independent of the shape's own scale.
         var cam = Camera.main;
         for (int i = 0; i < 3; i++)
         {
-            if (_arrows[i] == null) continue;
             Vector3 worldPos = transform.TransformPoint(Axes[i] * _localExtents[i]);
             Quaternion worldRot = transform.rotation * Quaternion.FromToRotation(Vector3.up, Axes[i]);
-            _arrows[i].transform.SetPositionAndRotation(worldPos, worldRot);
             float dist = cam != null ? Vector3.Distance(cam.transform.position, worldPos) : 1f;
-            _arrows[i].transform.localScale = Vector3.one * (dist * handleScreenSize);
+            Vector3 handleScale = Vector3.one * (dist * handleScreenSize);
+
+            if (_arrows[i] != null)
+            {
+                _arrows[i].transform.SetPositionAndRotation(worldPos, worldRot);
+                _arrows[i].transform.localScale = handleScale;
+            }
+            if (_moveArrows[i] != null)
+            {
+                _moveArrows[i].transform.SetPositionAndRotation(worldPos, worldRot);
+                _moveArrows[i].transform.localScale = handleScale;
+            }
         }
 
         // Rings still grow with the object (unlike the arrows' constant screen size),
@@ -288,7 +351,7 @@ public class ShapeTransformGizmo : MonoBehaviour
         RepositionHandles();
 
         if (_draggingAxis < 0 && Input.GetKeyDown(toggleModeKey))
-            SetMode(_mode == GizmoMode.Scale ? GizmoMode.Rotate : GizmoMode.Scale);
+            SetMode(NextMode(_mode));
 
         if (Input.GetKeyDown(closeKey))
         {
@@ -307,6 +370,7 @@ public class ShapeTransformGizmo : MonoBehaviour
         }
         else
         {
+            if (_mode == GizmoMode.Move) EndMoveDrag();
             _draggingAxis = -1;
         }
     }
@@ -317,22 +381,7 @@ public class ShapeTransformGizmo : MonoBehaviour
         if (cam == null) return;
         Ray ray = cam.ScreenPointToRay(Input.mousePosition);
 
-        if (_mode == GizmoMode.Scale)
-        {
-            int gizmoLayer = LayerMask.NameToLayer("Gizmo");
-            if (gizmoLayer < 0) return;
-            if (Physics.Raycast(ray, out var hit, 100f, 1 << gizmoLayer, QueryTriggerInteraction.Collide))
-            {
-                var handle = hit.collider.GetComponent<GizmoHandle>();
-                if (handle != null)
-                {
-                    _draggingAxis = handle.axisIndex;
-                    _dragStartMouse = Input.mousePosition;
-                    _dragStartScale = transform.localScale;
-                }
-            }
-        }
-        else
+        if (_mode == GizmoMode.Rotate)
         {
             float ringRadius = CurrentRingRadius(CurrentExtents());
             for (int i = 0; i < 3; i++)
@@ -345,6 +394,28 @@ public class ShapeTransformGizmo : MonoBehaviour
                     break;
                 }
             }
+            return;
+        }
+
+        // Scale and Move both grab an arrow-tip handle on the Gizmo layer.
+        int gizmoLayer = LayerMask.NameToLayer("Gizmo");
+        if (gizmoLayer < 0) return;
+        if (!Physics.Raycast(ray, out var hit, 100f, 1 << gizmoLayer, QueryTriggerInteraction.Collide)) return;
+        var handle = hit.collider.GetComponent<GizmoHandle>();
+        if (handle == null) return;
+
+        _draggingAxis = handle.axisIndex;
+        _dragStartMouse = Input.mousePosition;
+        if (_mode == GizmoMode.Scale)
+        {
+            _dragStartScale = transform.localScale;
+        }
+        else
+        {
+            _dragStartPosition = transform.position;
+            _dragStartRotation = transform.rotation;
+            _dragColliders = new List<Collider>(GetComponentsInChildren<Collider>());
+            _lastTouching = null;
         }
     }
 
@@ -453,6 +524,35 @@ public class ShapeTransformGizmo : MonoBehaviour
                 t.position = worldPositionsBefore[p] + (anchorWorldAfter - anchorWorldBefore[p]);
             }
         }
+        else if (_mode == GizmoMode.Move)
+        {
+            Vector3 worldAxis = transform.TransformDirection(Axes[_draggingAxis]);
+            Vector3 screenCenter = cam.WorldToScreenPoint(_dragStartPosition);
+            Vector3 screenAxisTip = cam.WorldToScreenPoint(_dragStartPosition + worldAxis);
+            Vector2 screenDir = ((Vector2)screenAxisTip - (Vector2)screenCenter).normalized;
+
+            Vector2 mouseDelta = (Vector2)Input.mousePosition - (Vector2)_dragStartMouse;
+            float pixelAmount = Vector2.Dot(mouseDelta, screenDir);
+
+            // Scaled by distance-to-camera, like the handles' own on-screen sizing, so
+            // a given mouse movement drags the part by a consistent WORLD distance
+            // regardless of zoom level -- without this, the same drag would move a part
+            // much further when zoomed out than when zoomed in.
+            float distScale = Vector3.Distance(cam.transform.position, _dragStartPosition);
+            float amount = pixelAmount * MoveSensitivity * distScale;
+
+            transform.position = _dragStartPosition + worldAxis * amount;
+
+            // Push back out of anything now overlapped (so the part reads as sliding
+            // along a surface rather than clipping through it) and track what it's
+            // resting against -- actual re-parenting only happens once the drag ends
+            // (see EndMoveDrag), but a Component keeps re-orienting flush to whatever
+            // it's currently touching the whole time it's dragged, the same continuous
+            // snap PlacementPreview does during initial placement.
+            _lastTouching = AttachmentUtil.ResolveOverlap(transform, _dragColliders, out Vector3 surfaceNormal);
+            if (_isComponent && _lastTouching != null)
+                transform.rotation = Quaternion.FromToRotation(Vector3.down, surfaceNormal);
+        }
         else
         {
             // Per-frame screen-space delta rather than recomputing an absolute angle
@@ -500,6 +600,35 @@ public class ShapeTransformGizmo : MonoBehaviour
             }
             _lastMouseScreen = mouseScreen;
         }
+    }
+
+    // Finalizes a Move drag on mouse-release: re-parents to whatever ended up touched
+    // (even if that's the same part it started on) so the object stays a physically
+    // attached member of the robot rather than a loose, unparented sibling; reverts the
+    // whole drag if it ends up touching nothing, rather than leaving a physically
+    // attached part floating unattached in empty space.
+    void EndMoveDrag()
+    {
+        if (_lastTouching != null)
+        {
+            Transform attachTo = _lastTouching.transform;
+            transform.SetParent(attachTo, worldPositionStays: true);
+
+            // A Motor keeps its own live Rigidbody + HingeJoint after placement (see
+            // PlacementPreview.Confirm) rather than being made a plain rigid child --
+            // moving it to a new attach point needs that joint re-wired to the new
+            // mount's Rigidbody, the same way Confirm() wires it up initially, or it'd
+            // still be physically anchored to wherever it USED to be mounted.
+            var hinge = GetComponentInChildren<HingeJoint>();
+            if (hinge != null)
+                hinge.connectedBody = attachTo.GetComponentInParent<Rigidbody>();
+        }
+        else
+        {
+            transform.SetPositionAndRotation(_dragStartPosition, _dragStartRotation);
+        }
+        _dragColliders = null;
+        _lastTouching = null;
     }
 
     // Casts ray against the plane through this shape's center, perpendicular to the

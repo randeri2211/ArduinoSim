@@ -163,7 +163,7 @@ public class BuildUI : MonoBehaviour
         // SphereCollider/CapsuleCollider (Unity's defaults for these primitives) don't
         // actually support non-uniform scaling in physics -- they stay a true
         // sphere/capsule sized off roughly the largest scale axis, even once
-        // ShapeTransformGizmo has visually stretched the mesh into an ellipsoid. A
+        // TransformGizmo has visually stretched the mesh into an ellipsoid. A
         // convex MeshCollider tracks the real (possibly non-uniformly scaled) mesh
         // exactly, so placement/touch detection matches what's actually on screen.
         // BoxCollider (Cube) already scales correctly per-axis and doesn't need this.
