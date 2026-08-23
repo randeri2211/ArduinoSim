@@ -34,6 +34,12 @@ public class PlacementPreview : MonoBehaviour
     readonly List<Collider> _colliders = new();
     readonly HashSet<Collider> _touching = new();
 
+    // The push-out direction ComputePenetration found for whichever collider is
+    // currently closest (same selection ClosestTouching() makes) -- doubles as an
+    // approximate surface normal for Components' flush-orientation, reusing physics
+    // data that's already being computed each frame rather than adding a raycast.
+    Vector3 _surfaceNormal = Vector3.down;
+
     // prefabBaseName: the source prefab's name (e.g. "Motor"), used to auto-name this
     // part as "<prefabBaseName><N>" on confirm. Leave null for Shapes, which aren't
     // looked up by LocalName at all.
@@ -63,7 +69,15 @@ public class PlacementPreview : MonoBehaviour
         foreach (var c in _colliders)
             c.isTrigger = true;
 
-        gameObject.AddComponent<PlacementRotator>();
+        gameObject.AddComponent<EditablePart>().IsComponent = prefabBaseName != null;
+        if (prefabBaseName == null)
+        {
+            gameObject.AddComponent<TransformGizmo>();
+        }
+        else
+        {
+            gameObject.AddComponent<PlacementRotator>();
+        }
     }
 
     void Update()
@@ -80,6 +94,7 @@ public class PlacementPreview : MonoBehaviour
 
         RefreshTouching();
         ResolveOverlap();
+        if (_prefabBaseName != null) UpdateComponentOrientation();
 
         bool sameFrameAsSpawn = Time.frameCount == _spawnFrame;
         if (!sameFrameAsSpawn && Input.GetKeyDown(confirmKey) && _touching.Count > 0)
@@ -94,14 +109,25 @@ public class PlacementPreview : MonoBehaviour
     // this component's own GameObject. A compound part (like a motor with its own
     // Rigidbody on a child) would silently never trigger these callbacks here at all,
     // so this queries directly instead of depending on that routing.
+    // Excludes the Gizmo layer (once created -- see TransformGizmo) so a shape's
+    // own scale/rotate handles, which sit right at its faces, never register as
+    // something it's "touching". LayerMask.NameToLayer returns -1 until that layer
+    // actually exists, and 1 << -1 is 0, so this is just ~0 (everything) until then.
+    static int TouchLayerMask()
+    {
+        int gizmoLayer = LayerMask.NameToLayer("Gizmo");
+        return gizmoLayer >= 0 ? ~(1 << gizmoLayer) : ~0;
+    }
+
     void RefreshTouching()
     {
         _touching.Clear();
+        int layerMask = TouchLayerMask();
         foreach (var mine in _colliders)
         {
             var bounds = mine.bounds;
             float radius = bounds.extents.magnitude + 0.05f;
-            foreach (var candidate in Physics.OverlapSphere(bounds.center, radius, ~0, QueryTriggerInteraction.Collide))
+            foreach (var candidate in Physics.OverlapSphere(bounds.center, radius, layerMask, QueryTriggerInteraction.Collide))
             {
                 if (candidate == null || _colliders.Contains(candidate)) continue;
                 if (Physics.ComputePenetration(
@@ -121,6 +147,7 @@ public class PlacementPreview : MonoBehaviour
     // reads as snapping.
     void ResolveOverlap()
     {
+        var closest = ClosestTouching();
         foreach (var other in _touching)
         {
             if (other == null) continue;
@@ -132,21 +159,42 @@ public class PlacementPreview : MonoBehaviour
                         out var direction, out var distance))
                 {
                     transform.position += direction * distance;
+                    if (other == closest) _surfaceNormal = direction;
                 }
             }
         }
     }
 
-    void Confirm()
+    // The single touching collider closest to this preview -- what Confirm() attaches
+    // to, and (for Components) what UpdateComponentOrientation() aligns against.
+    Collider ClosestTouching()
     {
-        Transform attachTo = null;
-        float best = float.MaxValue;
+        Collider best = null;
+        float bestDist = float.MaxValue;
         foreach (var c in _touching)
         {
             if (c == null) continue;
             float d = Vector3.Distance(transform.position, c.ClosestPoint(transform.position));
-            if (d < best) { best = d; attachTo = c.transform; }
+            if (d < bestDist) { bestDist = d; best = c; }
         }
+        return best;
+    }
+
+    // Continuously aligns a Component's local "bottom" (the mount-face convention every
+    // component prefab follows) to the surface normal of whatever it's closest to
+    // touching, then layers the player's manual spin (see PlacementRotator) on top
+    // around that same local axis. Leaves rotation alone if nothing's touched.
+    void UpdateComponentOrientation()
+    {
+        if (_touching.Count == 0) return;
+        float spin = GetComponent<PlacementRotator>() is { } rotator ? rotator.SpinDegrees : 0f;
+        transform.rotation = Quaternion.FromToRotation(Vector3.down, _surfaceNormal) * Quaternion.AngleAxis(spin, Vector3.down);
+    }
+
+    void Confirm()
+    {
+        var closest = ClosestTouching();
+        Transform attachTo = closest != null ? closest.transform : null;
 
         foreach (var c in _colliders)
             c.isTrigger = false;
@@ -184,6 +232,9 @@ public class PlacementPreview : MonoBehaviour
 
         var rotator = GetComponent<PlacementRotator>();
         if (rotator != null) Destroy(rotator);
+
+        var gizmo = GetComponent<TransformGizmo>();
+        if (gizmo != null) Destroy(gizmo);
 
         Destroy(this);
     }

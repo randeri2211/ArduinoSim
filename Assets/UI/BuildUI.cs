@@ -159,6 +159,27 @@ public class BuildUI : MonoBehaviour
 
         var go = GameObject.CreatePrimitive(type);
         go.transform.position = GetPlacementPosition();
+
+        // SphereCollider/CapsuleCollider (Unity's defaults for these primitives) don't
+        // actually support non-uniform scaling in physics -- they stay a true
+        // sphere/capsule sized off roughly the largest scale axis, even once
+        // TransformGizmo has visually stretched the mesh into an ellipsoid. A
+        // convex MeshCollider tracks the real (possibly non-uniformly scaled) mesh
+        // exactly, so placement/touch detection matches what's actually on screen.
+        // BoxCollider (Cube) already scales correctly per-axis and doesn't need this.
+        if (type != PrimitiveType.Cube)
+        {
+            var oldCollider = go.GetComponent<Collider>();
+            // DestroyImmediate, not Destroy -- BeginPlacement below calls
+            // PlacementPreview.Begin(), which collects colliders via
+            // GetComponentsInChildren in this same frame. Destroy() defers actual
+            // removal until end of frame, so that scan would still see (and cache) this
+            // collider, then it'd vanish out from under that cached reference later,
+            // throwing MissingReferenceException the next time it's touched.
+            if (oldCollider != null) DestroyImmediate(oldCollider);
+            go.AddComponent<MeshCollider>().convex = true;
+        }
+
         BeginPlacement(go, null);
     }
 
